@@ -15,6 +15,9 @@ module.exports = function (sequelize) {
       data: {
         type: DataTypes.JSON,
       },
+      blob: {
+        type: DataTypes.BLOB,
+      },
       expiryDate: {
         type: DataTypes.DATE,
         allowNull: false,
