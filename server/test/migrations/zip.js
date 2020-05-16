@@ -9,6 +9,9 @@ const readFileAsync = promisify(fs.readFile);
 const deflateAsync = promisify(deflate);
 const unzipAsync = promisify(unzip);
 
+exports.deflate = deflateAsync;
+exports.unzip = unzipAsync;
+
 exports.deflateJson = function deflateJson(obj) {
   return deflateAsync(JSON.stringify(obj));
 };

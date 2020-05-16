@@ -4,7 +4,15 @@ const path = require('path');
 const ncp = require('ncp').ncp;
 const TestUtils = require('../utils');
 const faker = require('faker');
-const { deflateJson, unzipJson, readZipped, writeZipped } = require('./zip');
+const papa = require('papaparse');
+const {
+  deflateJson,
+  unzipJson,
+  readZipped,
+  writeZipped,
+  deflate,
+  unzip,
+} = require('./zip');
 
 ncp.limit = 16;
 
@@ -87,7 +95,7 @@ describe('blob-perf', function () {
   describe.skip('json data array of objects', async function () {
     // At 100 caches
     // 313mb
-    // 6200 ms
+    // 6200 ms / 62 each
     it('Inserts - json data array of objects', async function () {
       for (let i = 0; i < 100; i++) {
         if (i % 10 === 0) {
@@ -102,7 +110,7 @@ describe('blob-perf', function () {
       }
     });
 
-    // 5000ms
+    // 5000ms / 50 each
     it('selects them', async function () {
       for (let i = 0; i < 100; i++) {
         const cache = await utils.sequelizeDb.Cache.findOne({
@@ -225,12 +233,51 @@ describe('blob-perf', function () {
 
     // 2975ms / 30ms each
     it('selects them', async function () {
-      for (let i = 0; i < 200; i++) {
+      for (let i = 0; i < 100; i++) {
         const cache = await utils.sequelizeDb.Cache.findOne({
           where: { id: `id-${i}` },
         });
         const obj = cache.toJSON();
         obj.blob = await unzipJson(obj.blob);
+      }
+    });
+  });
+
+  describe('blob csv zip array of array', async function () {
+    // At 100 caches
+    // 55 mb
+    // 11900
+    it('Inserts - blob zipped', async function () {
+      for (let i = 0; i < 100; i++) {
+        if (i % 10 === 0) {
+          console.log(`inserting ${i}`);
+        }
+
+        const data = {
+          id: `id-${i}`,
+          name: `test data ${i}`,
+          expiryDate: new Date(),
+          blob: await deflate(papa.unparse(FAKE_QUERY_RESULT_ARR_OF_ARR)),
+        };
+
+        await utils.sequelizeDb.Cache.create(data);
+      }
+    });
+
+    // 3501
+    it('selects them', async function () {
+      for (let i = 0; i < 100; i++) {
+        const cache = await utils.sequelizeDb.Cache.findOne({
+          where: { id: `id-${i}` },
+        });
+        const obj = cache.toJSON();
+        const buff = await unzip(obj.blob);
+        const data = await papa.parse(buff.toString());
+        obj.data = data.data;
+
+        if (i === 0) {
+          console.log(obj.data[0]);
+        }
       }
     });
   });
@@ -268,7 +315,7 @@ describe('blob-perf', function () {
     });
   });
 
-  describe('Stress blob data zip array of array', async function () {
+  describe.skip('Stress blob data zip array of array', async function () {
     // At 1000 caches
     // ?? mb
 
