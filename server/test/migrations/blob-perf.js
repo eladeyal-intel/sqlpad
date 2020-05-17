@@ -1,18 +1,23 @@
 /* eslint-disable no-await-in-loop */
 const assert = require('assert');
+const zlib = require('zlib');
+const { promisify } = require('util');
 const path = require('path');
 const ncp = require('ncp').ncp;
 const TestUtils = require('../utils');
 const faker = require('faker');
-const papa = require('papaparse');
-const {
-  deflateJson,
-  unzipJson,
-  readZipped,
-  writeZipped,
-  deflate,
-  unzip,
-} = require('./zip');
+
+const compress = promisify(zlib.deflate);
+const decompress = promisify(zlib.unzip);
+
+function compressJson(obj) {
+  return compress(JSON.stringify(obj));
+}
+
+async function decompressJson(zippedBuf) {
+  const buf = await decompress(zippedBuf);
+  return JSON.parse(buf.toString());
+}
 
 ncp.limit = 16;
 
@@ -83,8 +88,8 @@ describe('blob-perf', function () {
       b: true,
       c: '1234',
     };
-    const zipped = await deflateJson(obj);
-    const unzipped = await unzipJson(zipped);
+    const zipped = await compressJson(obj);
+    const unzipped = await decompressJson(zipped);
     assert.deepStrictEqual(unzipped, obj);
   });
 
@@ -224,7 +229,7 @@ describe('blob-perf', function () {
           id: `id-${i}`,
           name: `test data ${i}`,
           expiryDate: new Date(),
-          blob: await deflateJson(FAKE_QUERY_RESULT_ARR_OF_ARR),
+          blob: await compressJson(FAKE_QUERY_RESULT_ARR_OF_ARR),
         };
 
         await utils.sequelizeDb.Cache.create(data);
@@ -238,79 +243,7 @@ describe('blob-perf', function () {
           where: { id: `id-${i}` },
         });
         const obj = cache.toJSON();
-        obj.blob = await unzipJson(obj.blob);
-      }
-    });
-  });
-
-  describe('blob csv zip array of array', async function () {
-    // At 100 caches
-    // 55 mb
-    // 11900
-    it('Inserts - blob zipped', async function () {
-      for (let i = 0; i < 100; i++) {
-        if (i % 10 === 0) {
-          console.log(`inserting ${i}`);
-        }
-
-        const data = {
-          id: `id-${i}`,
-          name: `test data ${i}`,
-          expiryDate: new Date(),
-          blob: await deflate(papa.unparse(FAKE_QUERY_RESULT_ARR_OF_ARR)),
-        };
-
-        await utils.sequelizeDb.Cache.create(data);
-      }
-    });
-
-    // 3501
-    it('selects them', async function () {
-      for (let i = 0; i < 100; i++) {
-        const cache = await utils.sequelizeDb.Cache.findOne({
-          where: { id: `id-${i}` },
-        });
-        const obj = cache.toJSON();
-        const buff = await unzip(obj.blob);
-        const data = await papa.parse(buff.toString());
-        obj.data = data.data;
-
-        if (i === 0) {
-          console.log(obj.data[0]);
-        }
-      }
-    });
-  });
-
-  describe.skip('file data zip array of array', async function () {
-    // At 100 caches
-    // 60mb
-    // 10133ms / 101ms each
-    it('Inserts - file zipped', async function () {
-      for (let i = 0; i < 100; i++) {
-        if (i % 10 === 0) {
-          console.log(`inserting ${i}`);
-        }
-
-        const data = {
-          id: `id-${i}`,
-          name: `test data ${i}`,
-          expiryDate: new Date(),
-        };
-
-        await utils.sequelizeDb.Cache.create(data);
-        await writeZipped(data.id, FAKE_QUERY_RESULT_ARR_OF_ARR);
-      }
-    });
-
-    // 2940 ms / 30ms each
-    it('selects them', async function () {
-      for (let i = 0; i < 100; i++) {
-        const cache = await utils.sequelizeDb.Cache.findOne({
-          where: { id: `id-${i}` },
-        });
-        const obj = cache.toJSON();
-        obj.blob = await readZipped(obj.id);
+        obj.blob = await decompressJson(obj.blob);
       }
     });
   });
@@ -328,7 +261,7 @@ describe('blob-perf', function () {
             id: `id-${i * batch}`,
             name: `test data ${i * batch}`,
             expiryDate: new Date(),
-            blob: await deflateJson(FAKE_QUERY_RESULT_ARR_OF_ARR),
+            blob: await compressJson(FAKE_QUERY_RESULT_ARR_OF_ARR),
           };
 
           await utils.sequelizeDb.Cache.create(data);
@@ -340,7 +273,7 @@ describe('blob-perf', function () {
             where: { id },
           });
           const obj = cache.toJSON();
-          obj.blob = await unzipJson(obj.blob);
+          obj.blob = await decompressJson(obj.blob);
 
           await utils.sequelizeDb.Cache.destroy({ where: { id } });
         }
