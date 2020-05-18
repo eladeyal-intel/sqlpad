@@ -6,9 +6,20 @@ const path = require('path');
 const ncp = require('ncp').ncp;
 const TestUtils = require('../utils');
 const faker = require('faker');
+const papa = require('papaparse');
 
 const compress = promisify(zlib.deflate);
 const decompress = promisify(zlib.unzip);
+
+function compressCsv(obj) {
+  return compress(papa.unparse(obj));
+}
+
+async function decompressCsv(compressedBuf) {
+  const buf = await decompress(compressedBuf);
+  const { data } = papa.parse(buf.toString());
+  return data;
+}
 
 function compressJson(obj) {
   return compress(JSON.stringify(obj));
@@ -244,6 +255,42 @@ describe('blob-perf', function () {
         });
         const obj = cache.toJSON();
         obj.blob = await decompressJson(obj.blob);
+      }
+    });
+  });
+
+  describe('blob csv zip array of array', async function () {
+    // At 100 caches
+    // 55 mb
+    // 11246ms / 112ms each
+    it('Inserts', async function () {
+      for (let i = 0; i < 100; i++) {
+        if (i % 10 === 0) {
+          console.log(`inserting ${i}`);
+        }
+
+        const data = {
+          id: `id-${i}`,
+          name: `test data ${i}`,
+          expiryDate: new Date(),
+          blob: await compressCsv(FAKE_QUERY_RESULT_ARR_OF_ARR),
+        };
+
+        await utils.sequelizeDb.Cache.create(data);
+      }
+    });
+
+    // 3401ms / 34ms each
+    it('selects', async function () {
+      for (let i = 0; i < 100; i++) {
+        const cache = await utils.sequelizeDb.Cache.findOne({
+          where: { id: `id-${i}` },
+        });
+        const obj = cache.toJSON();
+        obj.blob = await decompressCsv(obj.blob);
+        if (i === 0) {
+          console.log(obj.blob[0]);
+        }
       }
     });
   });
