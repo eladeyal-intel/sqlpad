@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 const assert = require('assert');
 const zlib = require('zlib');
@@ -75,6 +76,43 @@ describe('blob-perf', function () {
    */
   let utils;
 
+  function testInsert(data, field, encodefn) {
+    it('Inserts', async function () {
+      for (let i = 0; i < 100; i++) {
+        if (i % 10 === 0) {
+          console.log(`inserting ${i}`);
+        }
+
+        const cacheData = {
+          id: `id-${i}`,
+          name: `test data ${i}`,
+          expiryDate: new Date(),
+          [field]: encodefn ? await encodefn(data) : data,
+        };
+
+        await utils.sequelizeDb.Cache.create(cacheData);
+      }
+    });
+  }
+
+  function testSelect(field, decodefn) {
+    it('selects', async function () {
+      for (let i = 0; i < 100; i++) {
+        const cache = await utils.sequelizeDb.Cache.findOne({
+          where: { id: `id-${i}` },
+        });
+        const obj = cache.toJSON();
+        if (decodefn) {
+          obj[field] = await decodefn(obj[field]);
+        }
+
+        if (i === 0) {
+          console.log(obj[field][0]);
+        }
+      }
+    });
+  }
+
   before('preps the env', async function () {
     utils = new TestUtils({
       dbPath: path.join(__dirname, '../artifacts/v4-to-v5'),
@@ -108,197 +146,55 @@ describe('blob-perf', function () {
     await utils.migrate();
   });
 
-  describe.skip('json data array of objects', async function () {
-    // At 100 caches
+  describe.skip('data json array of objects', async function () {
     // 313mb
-    // 6200 ms / 62 each
-    it('Inserts - json data array of objects', async function () {
-      for (let i = 0; i < 100; i++) {
-        if (i % 10 === 0) {
-          console.log(`inserting ${i}`);
-        }
-        await utils.sequelizeDb.Cache.create({
-          id: `id-${i}`,
-          name: `test data ${i}`,
-          expiryDate: new Date(),
-          data: FAKE_QUERY_RESULT_ARR_OF_OBJ,
-        });
-      }
-    });
-
-    // 5000ms / 50 each
-    it('selects them', async function () {
-      for (let i = 0; i < 100; i++) {
-        const cache = await utils.sequelizeDb.Cache.findOne({
-          where: { id: `id-${i}` },
-        });
-        cache.toJSON();
-      }
-    });
+    // 6168ms
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_OBJ, 'data');
+    // 5707ms
+    testSelect('data');
   });
 
-  describe.skip('json data array of array', async function () {
-    // At 100 caches
-    // 161mb
-    // 4300 ms / 43 each
-    it('Inserts - json data array of array', async function () {
-      for (let i = 0; i < 100; i++) {
-        if (i % 10 === 0) {
-          console.log(`inserting ${i}`);
-        }
-        await utils.sequelizeDb.Cache.create({
-          id: `id-${i}`,
-          name: `test data ${i}`,
-          expiryDate: new Date(),
-          data: FAKE_QUERY_RESULT_ARR_OF_ARR,
-        });
-      }
-    });
-
-    // 3800ms / 38 each
-    it('selects them', async function () {
-      for (let i = 0; i < 100; i++) {
-        const cache = await utils.sequelizeDb.Cache.findOne({
-          where: { id: `id-${i}` },
-        });
-        cache.toJSON();
-      }
-    });
-  });
-
-  describe.skip('blob data array of obj', async function () {
-    // At 100 caches
-    // 313mb
-    // 4300 ms
-    it('Inserts - blob', async function () {
-      for (let i = 0; i < 100; i++) {
-        if (i % 10 === 0) {
-          console.log(`inserting ${i}`);
-        }
-        await utils.sequelizeDb.Cache.create({
-          id: `id-${i}`,
-          name: `test data ${i}`,
-          expiryDate: new Date(),
-          blob: JSON.stringify(FAKE_QUERY_RESULT_ARR_OF_OBJ),
-        });
-      }
-    });
-
-    // 3000
-    it('selects them', async function () {
-      for (let i = 0; i < 100; i++) {
-        const cache = await utils.sequelizeDb.Cache.findOne({
-          where: { id: `id-${i}` },
-        });
-        const obj = cache.toJSON();
-        obj.blob = JSON.parse(obj.blob);
-      }
-    });
-  });
-
-  describe.skip('blob data array of array', async function () {
-    // At 100 caches
+  describe.skip('data json array of array', async function () {
     // 160mb
-    // 2600 ms / 26ms each
-    it('Inserts - blob', async function () {
-      for (let i = 0; i < 100; i++) {
-        if (i % 10 === 0) {
-          console.log(`inserting ${i}`);
-        }
-        await utils.sequelizeDb.Cache.create({
-          id: `id-${i}`,
-          name: `test data ${i}`,
-          expiryDate: new Date(),
-          blob: JSON.stringify(FAKE_QUERY_RESULT_ARR_OF_ARR),
-        });
-      }
-    });
-
-    // 1900ms / 19ms each
-    it('selects them', async function () {
-      for (let i = 0; i < 100; i++) {
-        const cache = await utils.sequelizeDb.Cache.findOne({
-          where: { id: `id-${i}` },
-        });
-        const obj = cache.toJSON();
-        obj.blob = JSON.parse(obj.blob);
-      }
-    });
+    // 3881ms
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'data');
+    // 3524ms
+    testSelect('data');
   });
 
-  describe.skip('blob data zip array of array', async function () {
-    // At 100 caches
-    // 60 mb
-    // 10606ms / 106ms each
-    it('Inserts - blob zipped', async function () {
-      for (let i = 0; i < 100; i++) {
-        if (i % 10 === 0) {
-          console.log(`inserting ${i}`);
-        }
-
-        const data = {
-          id: `id-${i}`,
-          name: `test data ${i}`,
-          expiryDate: new Date(),
-          blob: await compressJson(FAKE_QUERY_RESULT_ARR_OF_ARR),
-        };
-
-        await utils.sequelizeDb.Cache.create(data);
-      }
-    });
-
-    // 2975ms / 30ms each
-    it('selects them', async function () {
-      for (let i = 0; i < 100; i++) {
-        const cache = await utils.sequelizeDb.Cache.findOne({
-          where: { id: `id-${i}` },
-        });
-        const obj = cache.toJSON();
-        obj.blob = await decompressJson(obj.blob);
-      }
-    });
+  describe.skip('blob json array of obj', async function () {
+    // 313mb
+    // 3742ms
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_OBJ, 'blob', JSON.stringify);
+    // 3058ms
+    testSelect('blob', JSON.parse);
   });
 
-  describe('blob csv zip array of array', async function () {
-    // At 100 caches
-    // 55 mb
+  describe.skip('blob json array of array', async function () {
+    // 160mb
+    // 2606ms
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', JSON.stringify);
+    // 1778ms
+    testSelect('blob', JSON.parse);
+  });
+
+  describe('blob compressed array of array', async function () {
+    // 60mb
+    // 10297ms
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', compressJson);
+    // 4028ms
+    testSelect('blob', decompressJson);
+  });
+
+  describe.skip('blob csv zip array of array', async function () {
+    // 55mb
     // 11246ms / 112ms each
-    it('Inserts', async function () {
-      for (let i = 0; i < 100; i++) {
-        if (i % 10 === 0) {
-          console.log(`inserting ${i}`);
-        }
-
-        const data = {
-          id: `id-${i}`,
-          name: `test data ${i}`,
-          expiryDate: new Date(),
-          blob: await compressCsv(FAKE_QUERY_RESULT_ARR_OF_ARR),
-        };
-
-        await utils.sequelizeDb.Cache.create(data);
-      }
-    });
-
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', compressCsv);
     // 3401ms / 34ms each
-    it('selects', async function () {
-      for (let i = 0; i < 100; i++) {
-        const cache = await utils.sequelizeDb.Cache.findOne({
-          where: { id: `id-${i}` },
-        });
-        const obj = cache.toJSON();
-        obj.blob = await decompressCsv(obj.blob);
-        if (i === 0) {
-          console.log(obj.blob[0]);
-        }
-      }
-    });
+    testSelect('blob', decompressCsv);
   });
 
-  describe.skip('Stress blob data zip array of array', async function () {
-    // At 1000 caches
-    // ?? mb
-
+  describe.skip('Stress test', async function () {
     it('Inserts, reads, deletes - blob zipped', async function () {
       for (let batch = 1; batch <= 20; batch++) {
         console.log(`batch ${batch}`);
