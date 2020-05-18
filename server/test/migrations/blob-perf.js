@@ -22,6 +22,15 @@ async function decompressCsv(compressedBuf) {
   return data;
 }
 
+function csvStringify(obj) {
+  return papa.unparse(obj);
+}
+
+function csvParse(buf) {
+  const { data } = papa.parse(buf.toString());
+  return data;
+}
+
 function compressJson(obj) {
   return compress(JSON.stringify(obj));
 }
@@ -51,6 +60,31 @@ for (let i = 0; i < 10000; i++) {
     stateAbbr: faker.address.stateAbbr(),
     latitude: faker.address.latitude(),
     longitude: faker.address.longitude(),
+    // additional fields for larger set
+    color: faker.commerce.color(),
+    department: faker.commerce.department(),
+    productName: faker.commerce.productName(),
+    price: faker.commerce.price(),
+    productAdjective: faker.commerce.productAdjective(),
+    productMaterial: faker.commerce.productMaterial(),
+    product: faker.commerce.product(),
+    color2: faker.commerce.color(),
+    department2: faker.commerce.department(),
+    productName2: faker.commerce.productName(),
+    price2: faker.commerce.price(),
+    productAdjective2: faker.commerce.productAdjective(),
+    productMaterial2: faker.commerce.productMaterial(),
+    product2: faker.commerce.product(),
+    date1: faker.date.past(),
+    date2: faker.date.past(),
+    date3: faker.date.past(),
+    date4: faker.date.past(),
+    date5: faker.date.past(),
+    date6: faker.date.past(),
+    date7: faker.date.past(),
+    date8: faker.date.past(),
+    date9: faker.date.past(),
+    date10: faker.date.past(),
   });
 }
 
@@ -78,7 +112,7 @@ describe('blob-perf', function () {
 
   function testInsert(data, field, encodefn) {
     it('Inserts', async function () {
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 10; i++) {
         if (i % 10 === 0) {
           console.log(`inserting ${i}`);
         }
@@ -97,7 +131,7 @@ describe('blob-perf', function () {
 
   function testSelect(field, decodefn) {
     it('selects', async function () {
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 10; i++) {
         const cache = await utils.sequelizeDb.Cache.findOne({
           where: { id: `id-${i}` },
         });
@@ -106,9 +140,9 @@ describe('blob-perf', function () {
           obj[field] = await decodefn(obj[field]);
         }
 
-        if (i === 0) {
-          console.log(obj[field][0]);
-        }
+        // if (i === 0) {
+        //   console.log(obj[field][0]);
+        // }
       }
     });
   }
@@ -146,51 +180,28 @@ describe('blob-perf', function () {
     await utils.migrate();
   });
 
-  describe.skip('data json array of objects', async function () {
-    // 313mb
-    // 6168ms
-    testInsert(FAKE_QUERY_RESULT_ARR_OF_OBJ, 'data');
-    // 5707ms
-    testSelect('data');
-  });
-
-  describe.skip('data json array of array', async function () {
-    // 160mb
-    // 3881ms
+  describe.skip('data json', async function () {
     testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'data');
-    // 3524ms
     testSelect('data');
   });
 
-  describe.skip('blob json array of obj', async function () {
-    // 313mb
-    // 3742ms
-    testInsert(FAKE_QUERY_RESULT_ARR_OF_OBJ, 'blob', JSON.stringify);
-    // 3058ms
-    testSelect('blob', JSON.parse);
-  });
-
-  describe.skip('blob json array of array', async function () {
-    // 160mb
-    // 2606ms
+  describe.skip('blob json', async function () {
     testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', JSON.stringify);
-    // 1778ms
     testSelect('blob', JSON.parse);
   });
 
-  describe('blob compressed array of array', async function () {
-    // 60mb
-    // 10297ms
+  describe.skip('blob json compressed', async function () {
     testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', compressJson);
-    // 4028ms
     testSelect('blob', decompressJson);
   });
 
-  describe.skip('blob csv zip array of array', async function () {
-    // 55mb
-    // 11246ms / 112ms each
+  describe.skip('blob csv raw', async function () {
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', csvStringify);
+    testSelect('blob', csvParse);
+  });
+
+  describe.skip('blob csv zip', async function () {
     testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', compressCsv);
-    // 3401ms / 34ms each
     testSelect('blob', decompressCsv);
   });
 
