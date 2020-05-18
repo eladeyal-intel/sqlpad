@@ -11,6 +11,10 @@ async function up(queryInterface, config, appLog, nedb) {
   await queryInterface.addColumn('cache', 'blob', {
     type: Sequelize.BLOB,
   });
+
+  await queryInterface.addColumn('cache', 'text', {
+    type: Sequelize.TEXT,
+  });
 }
 
 module.exports = {

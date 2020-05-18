@@ -190,6 +190,11 @@ describe('blob-perf', function () {
     testSelect('blob', JSON.parse);
   });
 
+  describe.skip('text json', async function () {
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'text', JSON.stringify);
+    testSelect('text', JSON.parse);
+  });
+
   describe.skip('blob json compressed', async function () {
     testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', compressJson);
     testSelect('blob', decompressJson);
@@ -203,6 +208,11 @@ describe('blob-perf', function () {
   describe.skip('blob csv zip', async function () {
     testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'blob', compressCsv);
     testSelect('blob', decompressCsv);
+  });
+
+  describe('text csv raw', async function () {
+    testInsert(FAKE_QUERY_RESULT_ARR_OF_ARR, 'text', csvStringify);
+    testSelect('text', csvParse);
   });
 
   describe.skip('Stress test', async function () {
