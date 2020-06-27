@@ -29,9 +29,7 @@ class TestUtils {
         dbPath: path.join(__dirname, '/artifacts/defaultdb'),
         dbInMemory: true,
         appLogLevel: 'error',
-        backendDatabaseUri: process.env.SQLPAD_BACKEND_DB_URI
-          ? process.env.SQLPAD_BACKEND_DB_URI + salt
-          : '',
+        backendDatabaseUri: process.env.SQLPAD_BACKEND_DB_URI || '',
         webLogLevel: 'error',
         authProxyEnabled: true,
         authProxyHeaders: 'email:X-WEBAUTH-EMAIL',
@@ -39,6 +37,17 @@ class TestUtils {
       },
       {}
     );
+
+    // psuedo-randomize database name backendDatabaseUri
+    config.dbname = config
+      .get('backendDatabaseUri')
+      .match(/(?<=\/)(?<!\/\/)[^\/?]+/); // The first part of the URI which follows a / but not a //
+    config.backendDatabaseUri =
+      config.get('backendDatabaseUri') &&
+      config
+        .get('backendDatabaseUri')
+        .replace(config.dbname, config.dbname + salt);
+    config.dbname += salt;
 
     // TODO - this is problematic because multiple TestUtils are created all at once in describe()
     // and last one wins. This modifies a global state,
@@ -88,9 +97,12 @@ class TestUtils {
   async initDbs() {
     // Create DB if needed
     const backendDatabaseUri = this.config.get('backendDatabaseUri') || '';
-    const dbname = backendDatabaseUri.split('/').pop();
+
     if (backendDatabaseUri) {
-      const serverUri = backendDatabaseUri.replace(`/${dbname}`, '');
+      const serverUri = backendDatabaseUri.replace(
+        `/${this.config.dbname}`,
+        ''
+      );
       const sequelize = new Sequelize(serverUri, {
         logging: (message) => appLog.debug(message),
       });
@@ -100,7 +112,7 @@ class TestUtils {
         );
       }
       try {
-        await sequelize.query(`CREATE DATABASE ${dbname};`);
+        await sequelize.query(`CREATE DATABASE ${this.config.dbname};`);
       } catch (e) {
         if (e.parent.message.includes('database exists')) {
           // ignore
