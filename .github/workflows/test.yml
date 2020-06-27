@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false # if one job fails, others will not be aborted
       matrix:
-        backendtype: [ '', 'mssql','mysql', 'mariadb', 'postgres' ]
+        backendtype: [ '',  'mariadb' ]
         node-version: [12.x]
 
     steps:
