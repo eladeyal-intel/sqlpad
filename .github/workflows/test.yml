@@ -63,3 +63,5 @@ jobs:
 
       - name: Test
         run: npm run test${{ matrix.backendtype }} --prefix server
+        env:
+          TZ: UTC
