@@ -101,7 +101,7 @@ class TestUtils {
     if (backendDatabaseUri) {
       const serverUri = backendDatabaseUri.replace(
         `/${this.config.dbname}`,
-        ''
+        '/'
       );
       const sequelize = new Sequelize(serverUri, {
         logging: (message) => appLog.debug(message),
