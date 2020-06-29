@@ -157,4 +157,55 @@ describe('api/signin', function () {
       assert.equal(r2.body.currentUser.email, 'test@sqlpad.com');
     });
   });
+
+  describe('ldap', function () {
+    it('logs in', async function () {
+      // This tests uses https://www.forumsys.com/tutorials/integration-how-to/ldap/online-ldap-test-server/
+      const utils = new TestUtil({
+        enableLdapAuth: true,
+        ldapUrl: 'ldap://ldap.forumsys.com',
+        ldapBaseDN: 'dc=example,dc=com',
+        ldapUsername: 'cn=read-only-admin,dc=example,dc=com',
+        ldapPassword: 'password',
+      });
+      await utils.init();
+
+      const agent = request.agent(utils.app);
+
+      // This signin call authenticates the user and signs him in
+      await agent
+        .post('/api/signin')
+        .send({
+          password: 'password',
+          email: 'tesla', // for LDAP we use username only
+        })
+        .expect(200);
+      // agent should have session cookie to allow further action
+      const r2 = await agent.get('/api/app');
+      assert.equal(r2.body.currentUser.email, 'tesla@ldap.forumsys.com');
+    });
+
+    it('does not log in with wrong password', async function () {
+      // This tests uses https://www.forumsys.com/tutorials/integration-how-to/ldap/online-ldap-test-server/
+      const utils = new TestUtil({
+        enableLdapAuth: true,
+        ldapUrl: 'ldap://ldap.forumsys.com',
+        ldapBaseDN: 'dc=example,dc=com',
+        ldapUsername: 'cn=read-only-admin,dc=example,dc=com',
+        ldapPassword: 'password',
+      });
+      await utils.init();
+
+      const agent = request.agent(utils.app);
+
+      // This signin call authenticates the user and signs him in
+      await agent
+        .post('/api/signin')
+        .send({
+          password: 'wrongPassword',
+          email: 'tesla', // for LDAP we use username only
+        })
+        .expect(401);
+    });
+  });
 });

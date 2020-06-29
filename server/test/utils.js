@@ -26,7 +26,7 @@ class TestUtils {
         // Eventually these will be moved to sqlite and we can be fully-in-memory
         dbPath: path.join(__dirname, '/artifacts/defaultdb'),
         dbInMemory: true,
-        appLogLevel: 'error',
+        appLogLevel: 'debug',
         backendDatabaseUri: TestUtils.randomize_dbname(
           process.env.SQLPAD_BACKEND_DB_URI
         ),
@@ -65,6 +65,11 @@ class TestUtils {
       editor2: {
         id: undefined, // set if created
         email: 'editor2@test.com',
+        role: 'editor',
+      },
+      tesla: {
+        id: undefined, // set if created
+        email: 'tesla@ldap.forumsys.com',
         role: 'editor',
       },
     };
